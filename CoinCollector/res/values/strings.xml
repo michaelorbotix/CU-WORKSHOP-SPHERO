@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">StreamingExample</string>
+
+    <!-- Values -->
+    <string name="start">Start Game</string>
+    <string name="sphero_image">Sphero Image</string>
+    <string name="score">Score:</string>
+    <string name="time">Time:</string>
+
+</resources>

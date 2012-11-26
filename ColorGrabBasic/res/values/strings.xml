@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">StreamingExample</string>
+
+    <!-- Values -->
+    <string name="start">Spin</string>
+    <string name="lost">You Lost:</string>
+    <string name="won">You Won:</string>
+    <string name="points">Points:</string>
+    <string name="pick">Pick Background Color</string>
+
+
+</resources>

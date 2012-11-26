@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent" >
+
+    <RelativeLayout
+        android:id="@+id/relative_layout"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent" >
+
+      <TextView
+          android:id="@+id/text_score"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_alignParentTop="true"
+          android:layout_alignParentLeft="true"
+          android:text="@string/score"
+          android:textColor="#FFF"
+          android:visibility="invisible"/>  
+          
+      <TextView
+          android:id="@+id/text_time"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_alignParentTop="true"
+          android:layout_alignParentRight="true"
+          android:text="@string/time"
+          android:textColor="#FFF"
+          android:visibility="invisible"/> 
+        
+      <Button 
+          android:id="@+id/button_start"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_centerHorizontal="true"
+          android:layout_centerVertical="true"
+          android:text="@string/start"
+          android:onClick="onStartPressed"/>
+      
+      <ImageView
+          android:id="@+id/image_sphero"
+          android:layout_width="fill_parent"
+          android:layout_height="fill_parent"
+          android:src="@drawable/sphero_ball"
+          android:scaleType="matrix"
+          android:contentDescription="@string/sphero_image"
+          android:visibility="invisible"/>
+
+    </RelativeLayout>
+
+    <orbotix.view.connection.SpheroConnectionView
+        android:id="@+id/sphero_connection_view"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:background="#FFF" />
+
+</FrameLayout>
