@@ -113,307 +113,311 @@ These are the variables we need, add them to the `ColorGrabBasicActivity.java` c
      * The colors and times they appear so we can tell which color the player grabbed
      */
     private ArrayList<ColorTime> mColorTimes;
+    
+We are also going to be using our own custom class variable, which is a container for an int and a long variable.  Define it as well:
+
+    /**
+     * Private class to store the color and time at which that color occurs
+     * This makes our reverse lookup of the color easier
+     */
+    private class ColorTime {
+    	
+    	private int mColorIndex;   // Index to Rainbow color array
+    	private long mColorTime;   // Time in which the color appears
+    	
+    	/**
+    	 * Default Constructor
+    	 * @param index the index to rainbow color array
+    	 * @param time the time in ms that the color first appears
+    	 */
+    	public ColorTime(int index, long time) {
+    		mColorIndex = index;
+    		mColorTime = time;
+    	}
+    	
+    	/**
+    	 * Get the index to Rainbow color array
+    	 * @return the index to Rainbow color array
+    	 */
+    	public int getColorIndex() {
+    		return mColorIndex;
+    	}
+    	
+    	/**
+    	 * Get the time in which the color appears
+    	 * @return the time in milliseconds which the color appears
+    	 */
+    	public long getColorTime() {
+    		return mColorTime;
+    	}
+    }
+
         
 ### Starting the Game
 
-Before, we added a start button to the UI, so now it is time to implement the code when it is pressed.  We used XML to register the onStartPressed(View v) callback with the button, so now we just create the function:
+Before, we added a start button to the UI, so now it is time to implement the code when it is pressed.  We used XML to register the `onStartPressed(View v)` callback with the button, so now we just create the function:
 
     /**
-     * Called when the start button is clicked
-     * Show the Sphero Image, and start the thread to add coins and check for grabbing coins
-     * 
+     * Called when the start game button is pressed
      * @param v
      */
     public void onStartPressed(View v) {
-    	// Hide Start button
-    	mStartButton.setVisibility(View.GONE);
-    	
-    	// Send a calibrate command so the current configurization is 0,0
-    	CalibrateCommand.sendCommand(mRobot, 0);
+    
+        // Initialize Color List by adding the values from 0 to length of color list
+    	mColorList = new ArrayList<Integer>();
+    	for( int i = 0; i < RAINBOW_COLORS_BLUE.length; i++ ) {
+        	mColorList.add(new Integer(i));
+    	}
+    
         // Start streaming data
         requestDataStreaming();
-        
-        // Show Sphero image and set width and height and starting position
-        mImageSpheroBounds = new Point(mImageSphero.getDrawable().getBounds().width(),
-        							   mImageSphero.getDrawable().getBounds().height());
-        mImageSpheroLoc = new Point(0, 0);
-        mImageSphero.setVisibility(View.VISIBLE);
-        
-        // Reset Coin counter
-        mCoinsCollectedCtr = 0;
-    	mTextScore.setText(this.getString(R.string.score)+mCoinsCollectedCtr);
-    	mTextScore.setVisibility(View.VISIBLE);
-        
-    	// Set Time UI
-    	mStartTime = System.currentTimeMillis();
-    	mTextTime.setText(this.getString(R.string.time)+(GAME_DURATION-getTimeElapsed()));
-    	mTextTime.setVisibility(View.VISIBLE);
-    }
-    
-The comments in the code explain most of what is going on here.  We are simply initializing the views, score, and time to be the start of a round of the game.
-
-### Moving Sphero LogoThe algorithm that moves the logo around, using the Sphero ball as a controller, is simple.  However, you need to know about the orientation units of **roll and pitch** before the algorithm will make sense.  Here is an image that will help you understand these values which are in degrees.![android.jpg](https://github.com/orbotix/Sphero-Android-SDK/raw/master/assets/IMU.png)
-The algorithm treats the roll value as the x-axis velocity and the pitch value as y-axis velocity and updates the image x and y position based on these values.  The function to update the sphero motion is below:
-    /**
-     * Update the Sphero Logo Location
-     * @param roll in degrees from data streaming
-     * @param pitch in degrees from data streaming
-     * @param yaw in degrees from data streaming
-     */
-    private void updateSpheroPosition(double roll, double pitch, double yaw) {
+        // Start Color grab game
+    	sendColorGrabMacro();
+    	// Start Game
+    	mGameOn = true;
     	
-    	// Find the length of the velocity vector and the angle
-	    double length = Math.sqrt(pitch * pitch + roll * roll);
-	    double moveAngle = -Math.atan2(-pitch, roll);
-	    
-	    // Compute the velocity of the Sphero image
-	    double adjustedX = length * Math.cos(moveAngle);
-	    double adjustedY = length * Math.sin(moveAngle);
-	    
-	    // Add new distance to the Sphero image
-	    mImageSpheroLoc.x += adjustedX;
-	    mImageSpheroLoc.y += adjustedY;
-	    
-	    // Check boundaries
-	    if( (mImageSpheroLoc.x + mImageSpheroBounds.x) > mScreenWidth ) {
-	    	mImageSpheroLoc.x = mScreenWidth - mImageSpheroBounds.x;
-	    }
-	    if( (mImageSpheroLoc.y + mImageSpheroBounds.y) > mScreenHeight ) {
-	    	mImageSpheroLoc.y = mScreenHeight - mImageSpheroBounds.y;
-	    }
-	    if( mImageSpheroLoc.x < 0 ) {
-	    	mImageSpheroLoc.x = 0;
-	    }
-	    if( mImageSpheroLoc.y < 0 ) {
-	    	mImageSpheroLoc.y = 0;
-	    }
-	    
-	    // Create Sphero translation matrix
-	    Matrix matrix = new Matrix();
-	    matrix.reset();
-	    matrix.postTranslate(mImageSpheroLoc.x, mImageSpheroLoc.y);
-
-	    // Apply translation matrix
-	    mImageSphero.setScaleType(ScaleType.MATRIX);
-	    mImageSphero.setImageMatrix(matrix);
+    	mTextGameStatus.setText(getString(R.string.pick));
     }
     
-### Calling the updateSpheroPosition Function
+The comments in the code explain most of what is going on here.  Note, we have not created the `sendColorGrabMacro()` function yet, so there will be a syntax error.  This is the next step.
 
-The `StreamingExample` set up the data for us, so all we need to do is get it to the function we created.  We do this by replacing the code in `onDataReceived(DeviceAsyncData data)` to 
- 
-    //get the frames in the response
+## Macros
+
+Macros were created by our firmware team and were intended as a way to automate and accurately reproduce actions and behaviors, with both high and low client interaction.  In this case, the benefit is we can create a set of spins and color transitions, and send one command that runs this behavior over 10 or so seconds.  
+
+## Creating Macros
+
+There are 5 main steps to running a macro on a Sphero.
+	
+1. To create a macro 
+
+		MacroObject macro = new MacroObject();      
+
+2. Add commands to the object
+
+		macro.addCommand(…);
+		
+3. Set the Macro transmission mode.  Almost always use Normal, unless your Macro is longer than 254 bytes, in which case, use Chunky
+
+		macro.setMode(MacroObject.MacroObjectMode.Normal);
+
+4. Set the Robot to transmit the macro to
+
+		macro.setRobot(mRobot);
+
+5. Lastly, play the macro
+
+		macro.playMacro(); 
+		
+### The Color Grab Macro
+
+The goal of this macro is to make Sphero spin around, transition between a set of colors, and slowly increase the time between color transitions over time.  We also need to create the system in a way that when the user grabs the Sphero, we know which color the macro was on at that particular time.
+
+    /**
+     * Send the macro that changes colors and spins the ball
+     */
+    private void sendColorGrabMacro() {
+    	mColorTimes = new ArrayList<ColorTime>();
+    	
+    	// Choose color goal and set background to that color
+    	mColorToGrab = (new Random()).nextInt(RAINBOW_COLORS_BLUE.length);
+    	mLayout.setBackgroundColor(getHexColorFromRainbowIndex(mColorToGrab));
+    	
+    	// Create the macro object
+    	MacroObject macro = new MacroObject();
+    	macro.setMode(MacroObjectMode.Normal);
+    	macro.addCommand(new BackLED(100,0));
+    	
+    	int timeCtr = 0;
+    	int frequency = 500;  // Start at 400 ms
+    	
+    	// Spin for the length of the colors 20 seconds
+    	macro.addCommand(new RotateOverTime(20000, frequency*RAINBOW_COLORS_BLUE.length*8));
+    	
+    	for( int i = 0; i < 4; i++ ) {
+	    	Collections.shuffle(mColorList);   // Built-in function to shuffle colors for us
+	    	// Loop through and add colors
+	    	for( Integer index: mColorList ) {
+	    		mColorTimes.add(new ColorTime(index.intValue(),timeCtr));
+	    		macro.addCommand(new RGB(RAINBOW_COLORS_RED[index.intValue()],
+	    								 RAINBOW_COLORS_GREEN[index.intValue()],
+	    								 RAINBOW_COLORS_BLUE[index.intValue()], 0));
+	    		macro.addCommand(new Delay(frequency));
+	    		timeCtr += frequency;
+	    	}
+	    	frequency += 250;  // Add 100 ms
+    	}
+    	
+    	// Set Robot and play macro
+    	macro.setRobot(mRobot);
+    	macro.playMacro();
+    	
+    	// Set Start Time
+    	mStartTime = System.currentTimeMillis();
+    }
+    
+This function may seem daunting if you have never used a Sphero before.  It creates a macro object, and adds a set of commands to it.  We add the commands to turn on the Back LED with     `macro.addCommand(new BackLED(100,0))` and then make it spin 20,000 degrees over about 20 seconds.  The inside of the for loop builds together 4 different random sets of colors from the hard-coded RGB values we defined at the beginning.  These RGB values get put in a certain order, and then each one is added to a list for future access.
+
+The macro is then sent to the Sphero with `macro.playMacro()` and we save the time we sent it for future use.
+
+We will also need a helper function for this to work called `getHexColorFromRainbowIndex(int index)` which converts a RGB value to the format of a single int variable with (Alpha,Red,Green,Blue) format.
+
+	 /**
+     * Performs a bitwise operand to create a color based on R,G,B values
+     * @param index of rainbow colors
+     * @return hex color value
+     */
+    private int getHexColorFromRainbowIndex(int index) {
+    	int color = 0;
+    	color += RAINBOW_COLORS_BLUE[index];
+    	color += RAINBOW_COLORS_GREEN[index] << 8;
+    	color += RAINBOW_COLORS_RED[index] << 16;
+    	color += 0xFF << 24;
+    	return color;
+    }
+
+## Detecting User Grabs
+
+The Sphero SDK allows you to stream data from the ball's sensors.  In this case we want to detect the user grabbing the ball.  We will use a sensor called a 3-axis accelorometer.  If you never worked with an accelerometer before, this image should help you understand the acceleration vectors it describes:
+
+![android.jpg](https://github.com/orbotix/Sphero-Android-SDK/raw/master/assets/accelerometer.png)
+
+We will be looking at the positive z-axis and determining if the value ever goes over a certain threshold, or in this case 2Gs (G=9.81 m/s^2).
+
+### Data Streaming Code
+
+Inside the `onDataReceived(DeviceAsyncData data)` function there is a section where we get the accelerometer values, and print them to the screen.  In our case, we want to just check if the current value of the z-axis of the accelerometer is greater than 2.0 or less than -2.0. We do this below with the "if statement".
+
+	 //get the frames in the response
     List<DeviceSensorsData> data_list = ((DeviceSensorsAsyncData)data).getAsyncData();
     if(data_list != null){
 
+    	if( !mGameOn ) return;
+    	
         //Iterate over each frame
         for(DeviceSensorsData datum : data_list){
-
-            //Show attitude data
-            AttitudeData attitude = datum.getAttitudeData();
-            
-            // Get the values of roll and yaw
-            int roll = attitude.getAttitudeSensor().roll;
-            int pitch = attitude.getAttitudeSensor().pitch;
-            int yaw = attitude.getAttitudeSensor().yaw;
-            
-            // Calculate the new image position
-            updateSpheroPosition(roll, pitch, yaw);
+        	
+            AccelerometerData accel = datum.getAccelerometerData();
+            // Check for a "Grab" motion or large value in gravity up or down
+            if( Math.abs(accel.getFilteredAcceleration().z) >= 2.0 ) {
+            	
+            	            	}
+            }
         }
     }
     
-## Adding End of Game State
+### End Game State
 
-At this point, the game has no ending.  However, you should run the app, and test it out.  At this point, you should be able to press the start button and control the on screen logo using a tilt and twist of the Sphero ball.
+The color grab is our end game state.  Once we detect this gesture, we want to determine which color the user grabbed.  To do this, we need to first get the time duration that happened since we sent the macro.  We do a simple calculation of `timeDiff = System.currentTimeMillis()-mStartTime`.  Now that we have the time difference, we can loop through the ArrayList of ColorTime objects that we added so we can find which color we were on at the time.  The code below performs this algorithm and either sends a win macro and computes a score, or shows a losing macro.
 
-To add an end of game state, we need to reset the visibility of the views after a certain time period.  The time check should take place in the `onDataReceived(DeviceAsyncData data)` and it should call the `transisitionToEndOfGame()` function:
+	//get the frames in the response
+    List<DeviceSensorsData> data_list = ((DeviceSensorsAsyncData)data).getAsyncData();
+    if(data_list != null){
 
-(In `onDataReceived(DeviceAsyncData data)`):
-
-    // Calculate the new image position
-    updateSpheroPosition(roll, pitch, yaw);
-    
-    // Check for end of game state
-    if( (GAME_DURATION-getTimeElapsed()) <= 0 ) {
-    	transitionToEndOfGame();
+    	if( !mGameOn ) return;
+    	
+        //Iterate over each frame
+        for(DeviceSensorsData datum : data_list){
+        	
+            AccelerometerData accel = datum.getAccelerometerData();
+            // Check for a "Grab" motion or large value in gravity up or down
+            if( Math.abs(accel.getFilteredAcceleration().z) >= 2.0 ) {
+            	
+            	// Stop animation and data streaming
+            	AbortMacroCommand.sendCommand(mRobot);
+            	SetDataStreamingCommand.sendCommand(mRobot, 0, 0, 0, 0);
+            	mGameOn = false;
+            	
+            	// Get the time difference between the time grabbed
+            	long timeDiff = System.currentTimeMillis()-mStartTime;
+            	
+            	// Search for which color was the grabbed one
+            	for( int i = 1; i < mColorTimes.size(); i++ ) {
+            		// Check if we grabbed it in between these two colors
+            		if( timeDiff >= mColorTimes.get(i-1).getColorTime() && 
+            		    timeDiff <= mColorTimes.get(i).getColorTime() ) {
+            			// Check if this was the color we were supposed to pick
+            			if( mColorTimes.get(i-1).getColorIndex() == mColorToGrab ) {
+            				sendVictoryMacro();
+            				mTextGameStatus.setText(getString(R.string.won)+"\n"+getString(R.string.points)+(20000-mColorTimes.get(i).getColorTime()));
+            			}
+            			else {
+            				sendLossMacro(mColorTimes.get(i-1).getColorIndex());
+            				mTextGameStatus.setText(getString(R.string.lost));
+            			}
+            		}
+            	}
+            }
+        }
     }
-    // Update Time UI
-    mTextTime.setText(CoinCollector.this.getString(R.string.time)+(GAME_DURATION-getTimeElapsed()));
     
-Below is a useful function you must include to get elapsed time:
-    
-    /**
-     * Conveniant function to get elapsed time in seconds
-     * @return The Time Elapsed since start in seconds
+### Victory Macro
+
+The Victory macro will fade the winning color in and out 10 times over a period of time.  The code is below: 
+
+	 /**
+     * Send the macro animation when a player grabbed the right color
      */
-    private long getTimeElapsed() {
-    	return (System.currentTimeMillis()-mStartTime)/1000;
+    private void sendVictoryMacro() {
+    	// Create the macro object
+    	MacroObject macro = new MacroObject();
+    	macro.setMode(MacroObjectMode.Normal);
+    	
+    	// Loop Fading 10 times
+    	macro.addCommand(new LoopStart(10));
+    	// Fade to winning color
+    	macro.addCommand(new Fade(RAINBOW_COLORS_RED[mColorToGrab],
+								 RAINBOW_COLORS_GREEN[mColorToGrab],
+								 RAINBOW_COLORS_BLUE[mColorToGrab], 200));
+    	// 200 ms delay
+    	macro.addCommand(new Delay(200)); 
+    	// Fade to black
+    	macro.addCommand(new Fade(0,0,0, 200));
+    	macro.addCommand(new Delay(200)); 
+    	macro.addCommand(new LoopEnd());
+    	
+    	// Set Robot and play macro
+    	macro.setRobot(mRobot);
+    	macro.playMacro();
     }
     
-Transition function:    
-    
-    /**
-     * Transition to the state where the score is showing,
-     * and the game can be started again
-     */
-    private void transitionToEndOfGame() {
-    	// Send this command to Sphero to stop streaming
-        SetDataStreamingCommand.sendCommand(mRobot, 0, 0, 0, 0);
-        // Show Button again, and keep score visible
-        mStartButton.setVisibility(View.VISIBLE);
-        mTextTime.setVisibility(View.GONE);
-        mImageSphero.setVisibility(View.GONE);
-    }
-    
-## Adding the Coins
+### Losing Macro
 
-The last step of creating the game is adding the Coin Objects to collect in 60 seconds.  This the hardest part of the tutorial, so I saved it for last.  It involves creating a custom ImageView in code and performing rectangular collision detection on the logo and the coin.
-
-### The CoinView Class
-
-To create a new class, right click on the package we renamed before, and click `New->Class`.  Name the class `CoinView` and have the superclass be `android.widget.ImageView`. The most important part of this class is its constructor.
-
-	private int mRotation;      // Current rotation (in degrees)
-	private int mRotationRate;  // Amount to rotate each iteration (in degrees)
-	private Point mLocation;    // X, Y Position of the coin
-	
-	/**
-	 * Initialize a Coin Object in a random location
-	 * @param context Activity context to belong to
-	 * @param screenWidth Screen Width (in pixels)
-	 * @param screenHeight Screen Height (in pixels)
-	 */
-	public CoinView(Context context, int screenWidth, int screenHeight) {
-		super(context);
-		
-		// Get the resource identifier to grab the bitmap from memory
-		// Basically create the same properties as with the Sphero logo in xml, but in code
-		int id = context.getResources().getIdentifier("coin", "drawable", context.getPackageName());
-		RelativeLayout.LayoutParams vp = 
-		    new RelativeLayout.LayoutParams(LayoutParams.FILL_PARENT, 
-		                    LayoutParams.FILL_PARENT);
-		this.setLayoutParams(vp);        
-		this.setImageResource(id);       
-		this.setScaleType(ScaleType.MATRIX);
-		
-		// Drop the coin in a random location on the screen with a random rotation rate
-		Random randomGenerator = new Random();
-		mLocation = new Point(randomGenerator.nextInt(screenWidth-getCoinWidth()),
-							  randomGenerator.nextInt(screenHeight-getCoinHeight()));
-		mRotationRate = randomGenerator.nextInt(50)+1;   
-		
-		// Create Sphero translation matrix
-	    Matrix matrix = new Matrix();
-	    matrix.reset();
-	    matrix.postTranslate(mLocation.x, mLocation.y);
-
-	    // Apply translation matrix
-	    this.setScaleType(ScaleType.MATRIX);
-	    this.setImageMatrix(matrix);
-		
-		mRotation = 0;
-	}
-	
-This dynamically creates the same ImageView we created before in XML, but this one is created at runtime.    The interesting part about this, is we can manage new Coins with random location and rotation velocities programatically.
-
-Other functions that are needed in the class, are below:
-
-	/**
-	 * Convenient method to get the actual width dimension of the coin
-	 * @return the width of the coin
-	 */
-	public int getCoinWidth() {
-		return getDrawable().getMinimumHeight();
-	}
-	
-	/**
-	 * Convenient method to get the actual height dimension of the coin
-	 * @return the width of the coin
-	 */
-	public int getCoinHeight() {
-		return getDrawable().getMinimumWidth();
-	}
-	
-	/**
-	 * Returns the X, Y Position of the coin
-	 * @return X, Y Position of the Coin
-	 */
-	public Point getCoinLocation() {
-		return mLocation;
-	}
-	
-	/**
-	 * Rotate the Coin View a little bit every frame update
-	 */
-	public void rotate() {
-		mRotation = (mRotation + mRotationRate) % 360;
-		// Create Sphero translation matrix
-	    Matrix matrix = new Matrix();
-	    matrix.reset();
-	    matrix.postTranslate(mLocation.x, mLocation.y);
-	    matrix.postRotate(mRotation, mLocation.x+(getCoinWidth()/2), mLocation.y+(getCoinHeight()/2));
-	    // Apply rotation matrix
-	    this.setImageMatrix(matrix);
-	}
-	
-## USing the CoinView
-
-We are going to need to keep track of the Coin that's on the screen and also the amount of Coins that were collected.  Add these variables to the `CoinCollectorActivity.java` class.
-
-	/**
-     * Coin View
-     */
-    private CoinView mCoin;
-    private int mCoinsCollectedCtr;
-    
-We are going to initialize the CoinView when the start button is clicked, and add it to the RelativeLayout.  Add this code to the `onStartPressed(View v)` function.
-
-    // Create new Coin View
-    mCoin = new CoinView(this, mScreenWidth, mScreenHeight);
-    
-    // Add coin view to our layout
-    mLayout.addView(mCoin);
-    
-Now that we have a Coin displayed on the screen, we need to do collision detection to determine if the logo has intersected with a coin.  We will use the `Rect` class that does collision detection for us.  The collision detection algorithm is based on rectangles, and both these objects are circular, so it will not be perfect, but good enough for the tutorial.
+The losing macro takes the losing color as a parameter and strobes back and forth between the losing color and red.  The creates a warning effect that is good for conveying a loss.  The code is below:
 
     /**
-     * Function that updates the coin rotation and checks if we collected one
+     * Send the macro when a player grabbed the wrong color
      */
-    private void updateCoin() {
-	    // Create a Sphero Rect object, (Left, Top, Right, Bottom)
-	    Rect sphero = new Rect(mImageSpheroLoc.x, mImageSpheroLoc.y, 
-	    		mImageSpheroLoc.x + mImageSpheroBounds.x,  mImageSpheroLoc.y + mImageSpheroBounds.y);
-	    Rect coin = new Rect(mCoin.getCoinLocation().x,mCoin.getCoinLocation().y,
-	    		mCoin.getCoinLocation().x + mCoin.getCoinWidth(), mCoin.getCoinLocation().y + mCoin.getCoinHeight());
-	    // Check for coin collision
-	    if( sphero.intersect(coin) ) {
-	    	mCoinsCollectedCtr++;
-	    	// Remove old coin, and add new coin
-	    	mLayout.removeViewInLayout(mCoin);
-	    	mCoin = new CoinView(this, mScreenWidth, mScreenHeight);
-	    	mLayout.addView(mCoin);
-	    	// Update Score UI
-	    	mTextScore.setText(this.getString(R.string.score)+mCoinsCollectedCtr);
-	    }
-	    else {
-	    	// Slowly rotate coin
-	    	mCoin.rotate();
-	    }
-    }
-    
-If the logo and the coin intersect, then we remove the old coin from the layout, create a new one, add that to the layout, and incrament the coins collected counter.
-
-The last step is to call the `updateCount()` function from within the `mDataListener` object.  Put it below the `updateSpheroPostition(roll, pitch, yaw)` function:
-
-    // Calculate the new image position
-    updateSpheroPosition(roll, pitch, yaw);
-    updateCoin();
+    private void sendLossMacro(int colorIndex) {
+    	// Create the macro object
+    	MacroObject macro = new MacroObject();
+    	macro.setMode(MacroObjectMode.Normal);
+    	
+    	// Loop Flashing 10 times
+    	macro.addCommand(new LoopStart(10));
+    	// Change to the color the player actually grabbed
+    	macro.addCommand(new RGB(RAINBOW_COLORS_RED[colorIndex],
+								 RAINBOW_COLORS_GREEN[colorIndex],
+								 RAINBOW_COLORS_BLUE[colorIndex], 0));
+    	// 200 ms delay
+    	macro.addCommand(new Delay(200)); 
+    	// Change to red color
+    	macro.addCommand(new RGB(RAINBOW_COLORS_RED[0],
+								 RAINBOW_COLORS_GREEN[0],
+								 RAINBOW_COLORS_BLUE[0], 0));
+    	macro.addCommand(new Delay(200));
+    	macro.addCommand(new LoopEnd());
+    	
+    	// Set Robot and play macro
+    	macro.setRobot(mRobot);
+    	macro.playMacro();
+    }    
     
 ## Conclusion
 
-At this point, if you run the app, you will be able to play rounds of **CoinColletor** and try and collect as many coins as you can in 60 seconds.  
+At this point, if you run the app, you will be able to play rounds of **ColorGrabBasic** and to score as many high scores as you can.  
 
-Congratulations!  You have made your first mini-game with Sphero.  Hopefully this was an informative enough tutorial to be able to take this game to the next level by adding settings, multiple coins, a help menu, or whatever your creative mind can come up with. ## Questions
+Congratulations!  You have made your first mini-game with Sphero.  Hopefully this was an informative enough tutorial to be able to take this game to the next level by adding settings, sound effects, a help menu, or whatever your creative mind can come up with. ## Questions
 
 For questions, please visit our developer's forum at [http://forum.gosphero.com/](http://forum.gosphero.com/) or email me at michael@orbotix.com
 
