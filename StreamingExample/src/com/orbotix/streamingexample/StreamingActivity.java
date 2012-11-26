@@ -11,6 +11,7 @@ import orbotix.robot.sensor.AttitudeData;
 import orbotix.robot.sensor.DeviceSensorsData;
 import orbotix.view.connection.SpheroConnectionView;
 import orbotix.view.connection.SpheroConnectionView.OnRobotConnectionEventListener;
+
 import java.util.List;
 
 public class StreamingActivity extends Activity
@@ -123,7 +124,6 @@ public class StreamingActivity extends Activity
                     }
                 }, 1000);
 			}
-			
 			@Override
 			public void onBluetoothNotEnabled() {
 				// See ButtonDrive Sample on how to show BT settings screen, for now just notify user
@@ -131,14 +131,13 @@ public class StreamingActivity extends Activity
 			}
 		});
 		mSpheroConnectionView.showSpheros();
-		mSpheroConnectionView.setVisibility(View.GONE);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
 
-        // Shutdown Sphero
+		// Shutdown Sphero
         if(mRobot != null){
 
             StabilizationCommand.sendCommand(mRobot, true);
