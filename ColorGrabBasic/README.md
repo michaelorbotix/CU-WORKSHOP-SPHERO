@@ -1,7 +1,6 @@
 ![logo](http://update.orbotix.com/developer/sphero-small.png)
 
-# Color Grab Basic TutorialColor Grab Basic is a simple game in which you use Sphero in a multiplayer table-top game to grab the .  To control the logo, we use asynchronous data streaming of the IMU values of **Roll and Pitch**.
-## Starting from the StreamingExample Sample
+# Color Grab Basic TutorialColor Grab Basic is a simple game in which you use Sphero in a multiplayer table-top game to grab the Sphero when its color matches the one showing on the screen.  To make the Sphero animate, we use commands called Macros and we use a simple time-based algorithm to determine which color was chosen.## Starting from the StreamingExample Sample
 Our SDK comes with a bunch of samples you can import to avoid redundant coding when starting a new app.  In this case, we are going to start with the `StreamingExample` sample, because it is already set up to stream data from Sphero to your Android device.
 To import the SensorStreaming project into Eclipse, on the menu go to `"File->Import"`, select `General->Existing Project into Workspace` and navigate to the `samples` directory where you downloaded the Sphero-Android-SDK.  Select the `StreamingExample` directory and hit finish.## Refactoring/Renaming the Sample
 We don't want our game to be called StreamingExample, we want it to be called CoinCollector.  It's easiest to do this refactoring at the beginning of a project before adding any classes. 
